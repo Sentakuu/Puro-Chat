@@ -3,22 +3,20 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
     cors: {
-        origin: process.env.FRONTEND_URL || "*",
+        origin: "*",
         methods: ["GET", "POST"]
     }
 });
 const cors = require('cors');
 const path = require('path');
 
-// Enable CORS for the frontend
-app.use(cors({
-    origin: process.env.FRONTEND_URL || "*"
-}));
+// Enable CORS for all origins
+app.use(cors());
 
 // Serve static files from the public directory
 app.use(express.static('public'));
 
-// Serve index.html for all routes (for GitHub Pages SPA support)
+// Serve index.html for all routes
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -223,7 +221,9 @@ function broadcastIRCUsers() {
 
 // Update port configuration for Railway
 const PORT = process.env.PORT || 8080;
+const RAILWAY_URL = process.env.RAILWAY_STATIC_URL || `http://localhost:${PORT}`;
+
 http.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
-    console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:' + PORT}`);
+    console.log(`Frontend URL: ${RAILWAY_URL}`);
 }); 
