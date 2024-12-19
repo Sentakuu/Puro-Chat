@@ -377,8 +377,8 @@
     <script>
         // Get server URL from environment or use default
         const SERVER_URL = window.location.hostname === 'localhost' 
-            ? 'http://localhost:3000'
-            : 'https://puroroom-production-bc7d3200.up.railway.app'; // Your Railway project URL
+            ? 'http://localhost:8080'
+            : window.location.origin; // This will use the Railway URL automatically
 
         const socket = io(SERVER_URL);
         let userName = '';
