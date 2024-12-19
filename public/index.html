@@ -380,6 +380,94 @@
         const socket = io(SERVER_URL);
         let userName = '';
         let currentMode = 'ai';
+        let isConnected = false;
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 5;
+
+        // Connection event handlers
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            isConnected = true;
+            reconnectAttempts = 0;
+            
+            // If we were previously connected and had a username, rejoin
+            if (userName) {
+                socket.emit('join', { name: userName, mode: currentMode });
+            }
+            
+            // Start ping interval
+            startPingInterval();
+        });
+
+        socket.on('disconnect', (reason) => {
+            console.log('Disconnected from server:', reason);
+            isConnected = false;
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML += `
+                <div class="message">
+                    <strong>System:</strong> Connection lost. Attempting to reconnect...
+                </div>
+            `;
+            
+            // Attempt to reconnect if not already trying
+            if (!socket.connected && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                setTimeout(() => {
+                    reconnectAttempts++;
+                    socket.connect();
+                }, 1000 * reconnectAttempts);
+            }
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML += `
+                <div class="message">
+                    <strong>System:</strong> Connection error. Retrying...
+                </div>
+            `;
+        });
+
+        socket.on('reconnect', (attemptNumber) => {
+            console.log('Reconnected after', attemptNumber, 'attempts');
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML += `
+                <div class="message">
+                    <strong>System:</strong> Reconnected to server!
+                </div>
+            `;
+        });
+
+        socket.on('reconnect_attempt', (attemptNumber) => {
+            console.log('Attempting to reconnect...', attemptNumber);
+        });
+
+        socket.on('reconnect_error', (error) => {
+            console.error('Reconnection error:', error);
+        });
+
+        socket.on('reconnect_failed', () => {
+            console.error('Failed to reconnect');
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML += `
+                <div class="message">
+                    <strong>System:</strong> Unable to reconnect. Please refresh the page.
+                </div>
+            `;
+        });
+
+        // Ping mechanism to keep connection alive
+        function startPingInterval() {
+            setInterval(() => {
+                if (socket.connected) {
+                    socket.emit('ping');
+                }
+            }, 25000);
+        }
+
+        socket.on('pong', () => {
+            console.log('Received pong from server');
+        });
 
         // Mode selection
         const modeButtons = document.querySelectorAll('.mode-button');
@@ -463,20 +551,6 @@
         }
 
         // Socket event handlers
-        socket.on('connect', () => {
-            console.log('Connected to server');
-        });
-
-        socket.on('connect_error', (error) => {
-            console.error('Connection error:', error);
-            const chatMessages = document.getElementById('chatMessages');
-            chatMessages.innerHTML += `
-                <div class="message">
-                    <strong>System:</strong> Failed to connect to chat server. Please try again later.
-                </div>
-            `;
-        });
-
         socket.on('message', (data) => {
             console.log('Message received:', data);
             const chatMessages = document.getElementById('chatMessages');
@@ -513,17 +587,6 @@
             if (e.key === 'Enter') {
                 sendMessage();
             }
-        });
-
-        // Initialize socket connection
-        socket.on('disconnect', () => {
-            console.log('Disconnected from server');
-            const chatMessages = document.getElementById('chatMessages');
-            chatMessages.innerHTML += `
-                <div class="message">
-                    <strong>System:</strong> Disconnected from chat server. Trying to reconnect...
-                </div>
-            `;
         });
     </script>
 </body>
